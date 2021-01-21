@@ -5,8 +5,10 @@ using UnityEngine;
 
 public class ProjectManager : MonoBehaviour
 {
+    // manages all line strips
     public class LinesManager
     {
+        // data for one line strip
         public class LineData
         {
             public LineData(LineRenderer r, GameObject o)
@@ -20,8 +22,11 @@ public class ProjectManager : MonoBehaviour
             public List<Vector3> pts = new List<Vector3>();
             public float width = 0.5f;
         }
+
+        // main data of LinesManager
         List<LineData> allRends = new List<LineData>();
 
+        // public interface for LinesManager
         public void AddLine(Color c, LineRenderer rend, GameObject go)
         {
             allRends.Add(new LineData(rend, go));
@@ -33,18 +38,24 @@ public class ProjectManager : MonoBehaviour
         {
             allRends[lineIndex].rend.positionCount++;
         }
-
         public void SetPoint(int lineIndex, int pointIndex, Vector3 pos)
         {
             allRends[lineIndex].rend.SetPosition(pointIndex, pos);
         }
         public void RemovePointFromLine(int lineIndex, int pointIndex)
         {
-
+            if(pointIndex < allRends[lineIndex].rend.positionCount)
+            {
+                for (int i = pointIndex; i < allRends[lineIndex].rend.positionCount - 2; i++)
+                {
+                    // shift all other points to fill in the removed
+                    allRends[lineIndex].rend.SetPosition(i, allRends[lineIndex].rend.GetPosition(i + 1));
+                }
+            }
+            allRends[lineIndex].rend.positionCount--;
         }
         public void SetWidth(int lineIndex, float width)
         {
-            //allRends[lineIndex].rend.SetWidth(width, width);
             allRends[lineIndex].rend.startWidth = width;
             allRends[lineIndex].rend.endWidth = width;
         }
@@ -54,8 +65,6 @@ public class ProjectManager : MonoBehaviour
         }
     }
     LinesManager m_linesManager = new LinesManager();
-
-    //GameObject emptyobj = new GameObject();
 
     public float lineWidth = 0.1f;
     public float pointWidth = 0.5f;
@@ -79,9 +88,6 @@ public class ProjectManager : MonoBehaviour
     // Start is called before the first frame update
     void Start()
     {
-        // set our line renderer reference to the line renderer component that
-        // we attached to this object in the editor
-        //lineRend = gameObject.GetComponent<LineRenderer>();
         var go = Instantiate(lineRend);
         m_linesManager.AddLine(Color.blue, go.GetComponent<LineRenderer>(), go);
         slider.value = lineWidth; // reasonable starting value
@@ -91,6 +97,26 @@ public class ProjectManager : MonoBehaviour
     void Update()
     {
         // 0 is Left mouse button, 1 is Right mouse button
+        if(Input.GetMouseButtonDown(1))
+        {
+            RaycastHit rh;
+            if (Physics.Raycast(Camera.main.ScreenPointToRay(Input.mousePosition), out rh))
+            {
+                // find the index
+                int index = 0;
+                for(int i=0;i< draggablePoints.Count; ++i)
+                {
+                    if (draggablePoints[i] == rh.collider.gameObject)
+                    {
+                        index = i;
+                        break;
+                    }
+                }
+                draggablePoints.RemoveAt(index);
+                m_linesManager.RemovePointFromLine(0, index);
+                Destroy(rh.collider.gameObject);
+            }
+        }
         if (Input.GetMouseButtonDown(0))
         {
             if (EventSystem.current.IsPointerOverGameObject())
@@ -109,7 +135,6 @@ public class ProjectManager : MonoBehaviour
                 else
                 {
                     pointsClicked++;
-                    //lineRend.positionCount = pointsClicked;
                     m_linesManager.AddPoint(0);
 
                     // convert mouse coords to a world position
@@ -123,7 +148,6 @@ public class ProjectManager : MonoBehaviour
                     draggablePoints.Add(go);
 
                     // update the lineRenderer vertex position
-                    //lineRend.SetPosition(pointsClicked - 1, point);
                     m_linesManager.SetPoint(0, pointsClicked - 1, point);
                 }
             }
@@ -150,12 +174,10 @@ public class ProjectManager : MonoBehaviour
                 }
             }
 
-            //lineRend.SetPosition(index, point);
             m_linesManager.SetPoint(0, index, point);
         }
 
         m_linesManager.SetWidth(0, slider.value);
-        //lineRend.SetWidth(slider.value, slider.value);
     }
 
     // create buttons/labels with ImGUI in here
@@ -164,7 +186,6 @@ public class ProjectManager : MonoBehaviour
         if (GUI.Button(new Rect(10, 10, 200, 50), "<color='green'><size=30>Clear all</size></color>"))
         {
             pointsClicked = 0;
-            //lineRend.positionCount = 0;
             m_linesManager.ClearLine(0);
             foreach(var o in draggablePoints)
             {
