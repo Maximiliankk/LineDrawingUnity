@@ -15,12 +15,15 @@ public class ProjectManager : MonoBehaviour
             {
                 rend = r;
                 obj = o;
+                r.material.color = col;
+                r.startWidth = width;
+                r.endWidth = width;
             }
             public LineRenderer rend;
             public GameObject obj;
             public Color col = Color.green;
             public List<Vector3> pts = new List<Vector3>();
-            public float width = 0.5f;
+            public float width = 0.1f;
         }
 
         // main data of LinesManager
@@ -33,6 +36,7 @@ public class ProjectManager : MonoBehaviour
             var r = allRends[allRends.Count - 1];
             r.col = c;
             r.rend.positionCount = 0;
+            r.rend.material.color = c;
         }
         public void AddPoint(int lineIndex)
         {
@@ -42,11 +46,15 @@ public class ProjectManager : MonoBehaviour
         {
             allRends[lineIndex].rend.SetPosition(pointIndex, pos);
         }
+        public Vector3 GetPoint(int lineIndex, int pointIndex)
+        {
+            return allRends[lineIndex].rend.GetPosition(pointIndex);
+        }
         public void RemovePointFromLine(int lineIndex, int pointIndex)
         {
             if(pointIndex < allRends[lineIndex].rend.positionCount)
             {
-                for (int i = pointIndex; i < allRends[lineIndex].rend.positionCount - 2; i++)
+                for (int i = pointIndex; i <= allRends[lineIndex].rend.positionCount - 2; i++)
                 {
                     // shift all other points to fill in the removed
                     allRends[lineIndex].rend.SetPosition(i, allRends[lineIndex].rend.GetPosition(i + 1));
@@ -90,18 +98,42 @@ public class ProjectManager : MonoBehaviour
     {
         var go = Instantiate(lineRend);
         m_linesManager.AddLine(Color.blue, go.GetComponent<LineRenderer>(), go);
+        var go2 = Instantiate(lineRend);
+        m_linesManager.AddLine(Color.yellow, go2.GetComponent<LineRenderer>(), go2);
         slider.value = lineWidth; // reasonable starting value
 
-        // generate some points randomly
-        for(int i=0;i<5;++i)
+        // generate some clcked points randomly
+        int numRandPts = 5;
+        for (int i = 0; i < numRandPts; ++i)
         {
             var point = Camera.main.ScreenToWorldPoint(
             new Vector3(UnityEngine.Random.Range(0, Screen.width),
             UnityEngine.Random.Range(0, Screen.height),
             Mathf.Abs(Camera.main.transform.position.z)));
-
-            CreatePointAtPosition(point);
+            ClickPoint(point);
         }
+    }
+
+    void ClickPoint(Vector3 point)
+    {
+        pointsClicked++;
+        m_linesManager.AddPoint(0); // allocate memory for new point
+
+        // create the sphere object to drag points around with
+        var sphereObj = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+        sphereObj.transform.position = point;
+        sphereObj.transform.localScale = new Vector3(1, 1, 1) * pointWidth;
+        draggablePoints.Add(sphereObj);
+
+        // update the lineRenderer vertex position
+        m_linesManager.SetPoint(0, pointsClicked - 1, point);
+
+        //if(pointsClicked > 1)
+        //{
+        //    var midp = m_linesManager.GetPoint(0, pointsClicked - 2) + m_linesManager.GetPoint(0, pointsClicked - 1);
+        //    m_linesManager.AddPoint(1);
+        //    m_linesManager.SetPoint(1, pointsClicked - 2, midp * 0.5f);
+        //}
     }
 
     // Update is called once per frame
@@ -126,6 +158,7 @@ public class ProjectManager : MonoBehaviour
                 draggablePoints.RemoveAt(index);
                 m_linesManager.RemovePointFromLine(0, index);
                 Destroy(rh.collider.gameObject);
+                pointsClicked--;
             }
         }
         if (Input.GetMouseButtonDown(0))
@@ -149,7 +182,7 @@ public class ProjectManager : MonoBehaviour
                     var point = Camera.main.ScreenToWorldPoint(
                     new Vector3(Input.mousePosition.x, Input.mousePosition.y, Mathf.Abs(Camera.main.transform.position.z)));
 
-                    CreatePointAtPosition(point);
+                    ClickPoint(point);
                 }
             }
         }
@@ -166,7 +199,7 @@ public class ProjectManager : MonoBehaviour
             draggedObj.transform.position = point;
 
             int index = 0;
-            for(int i=0;i<draggablePoints.Count;++i)
+            for (int i = 0; i < draggablePoints.Count; ++i)
             {
                 if (draggablePoints[i] == draggedObj)
                 {
@@ -176,24 +209,15 @@ public class ProjectManager : MonoBehaviour
             }
 
             m_linesManager.SetPoint(0, index, point);
+
+            // update midpoints
+            //for (int i = 0; i < draggablePoints.Count-1; ++i)
+            //{
+            //    m_linesManager.SetPoint(1, i, (m_linesManager.GetPoint(0, i) + m_linesManager.GetPoint(0, i+1)) * 0.5f);
+            //}
         }
 
         m_linesManager.SetWidth(0, slider.value);
-    }
-
-    void CreatePointAtPosition(Vector3 pos)
-    {
-        pointsClicked++;
-        m_linesManager.AddPoint(0);
-
-        // create the sphere object to drag points around with
-        var go = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-        go.transform.position = pos;
-        go.transform.localScale = new Vector3(1, 1, 1) * pointWidth;
-        draggablePoints.Add(go);
-
-        // update the lineRenderer vertex position
-        m_linesManager.SetPoint(0, pointsClicked - 1, pos);
     }
 
     // create buttons/labels with ImGUI in here
