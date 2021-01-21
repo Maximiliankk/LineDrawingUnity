@@ -91,6 +91,17 @@ public class ProjectManager : MonoBehaviour
         var go = Instantiate(lineRend);
         m_linesManager.AddLine(Color.blue, go.GetComponent<LineRenderer>(), go);
         slider.value = lineWidth; // reasonable starting value
+
+        // generate some points randomly
+        for(int i=0;i<5;++i)
+        {
+            var point = Camera.main.ScreenToWorldPoint(
+            new Vector3(UnityEngine.Random.Range(0, Screen.width),
+            UnityEngine.Random.Range(0, Screen.height),
+            Mathf.Abs(Camera.main.transform.position.z)));
+
+            CreatePointAtPosition(point);
+        }
     }
 
     // Update is called once per frame
@@ -134,21 +145,11 @@ public class ProjectManager : MonoBehaviour
                 }
                 else
                 {
-                    pointsClicked++;
-                    m_linesManager.AddPoint(0);
-
                     // convert mouse coords to a world position
                     var point = Camera.main.ScreenToWorldPoint(
                     new Vector3(Input.mousePosition.x, Input.mousePosition.y, Mathf.Abs(Camera.main.transform.position.z)));
 
-                    // create the sphere object to drag points around with
-                    var go = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-                    go.transform.position = point;
-                    go.transform.localScale = new Vector3(1,1,1) * pointWidth;
-                    draggablePoints.Add(go);
-
-                    // update the lineRenderer vertex position
-                    m_linesManager.SetPoint(0, pointsClicked - 1, point);
+                    CreatePointAtPosition(point);
                 }
             }
         }
@@ -178,6 +179,21 @@ public class ProjectManager : MonoBehaviour
         }
 
         m_linesManager.SetWidth(0, slider.value);
+    }
+
+    void CreatePointAtPosition(Vector3 pos)
+    {
+        pointsClicked++;
+        m_linesManager.AddPoint(0);
+
+        // create the sphere object to drag points around with
+        var go = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+        go.transform.position = pos;
+        go.transform.localScale = new Vector3(1, 1, 1) * pointWidth;
+        draggablePoints.Add(go);
+
+        // update the lineRenderer vertex position
+        m_linesManager.SetPoint(0, pointsClicked - 1, pos);
     }
 
     // create buttons/labels with ImGUI in here
