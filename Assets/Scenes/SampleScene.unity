@@ -892,9 +892,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 73a4d44b0330b4dc9812e9f87d1e51dd, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  lineWidth: 0.1
-  pointWidth: 0.5
-  lineRend: {fileID: 3288140930554187374, guid: 47b81ba374ca545ebb55c9119cabfad5,
+  lineRendPrefab: {fileID: 3288140930554187374, guid: 47b81ba374ca545ebb55c9119cabfad5,
     type: 3}
   slider: {fileID: 161570778}
 --- !u!4 &1492252414

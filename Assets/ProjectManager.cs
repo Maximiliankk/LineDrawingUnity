@@ -2,9 +2,13 @@
 using System.Collections.Generic;
 using UnityEngine.EventSystems;
 using UnityEngine;
+using System;
 
 public class ProjectManager : MonoBehaviour
 {
+    readonly float lineWidth = 0.1f;
+    readonly float pointWidth = 0.5f;
+
     // manages all line strips
     public class LinesManager
     {
@@ -74,17 +78,14 @@ public class ProjectManager : MonoBehaviour
     }
     LinesManager m_linesManager = new LinesManager();
 
-    public float lineWidth = 0.1f;
-    public float pointWidth = 0.5f;
-
     // current number of active control points
     int pointsClicked = 0;
 
-    // reference to our line renderer
-    public GameObject lineRend;
+    // use this as a template to make more lineRenderers
+    [SerializeField] GameObject lineRendPrefab;
 
     // public allows you to drag an object reference here in the editor
-    public UnityEngine.UI.Slider slider;
+    [SerializeField] UnityEngine.UI.Slider slider;
 
     // flag for dragging points
     bool dragging = false;
@@ -96,22 +97,11 @@ public class ProjectManager : MonoBehaviour
     // Start is called before the first frame update
     void Start()
     {
-        var go = Instantiate(lineRend);
+        var go = Instantiate(lineRendPrefab);
         m_linesManager.AddLine(Color.blue, go.GetComponent<LineRenderer>(), go);
-        var go2 = Instantiate(lineRend);
+        var go2 = Instantiate(lineRendPrefab);
         m_linesManager.AddLine(Color.yellow, go2.GetComponent<LineRenderer>(), go2);
         slider.value = lineWidth; // reasonable starting value
-
-        // generate some clcked points randomly
-        int numRandPts = 5;
-        for (int i = 0; i < numRandPts; ++i)
-        {
-            var point = Camera.main.ScreenToWorldPoint(
-            new Vector3(UnityEngine.Random.Range(0, Screen.width),
-            UnityEngine.Random.Range(0, Screen.height),
-            Mathf.Abs(Camera.main.transform.position.z)));
-            ClickPoint(point);
-        }
     }
 
     void ClickPoint(Vector3 point)
@@ -128,6 +118,8 @@ public class ProjectManager : MonoBehaviour
         // update the lineRenderer vertex position
         m_linesManager.SetPoint(0, pointsClicked - 1, point);
 
+        if (pointsClicked > 1)
+            UpdateCurve();
         //if(pointsClicked > 1)
         //{
         //    var midp = m_linesManager.GetPoint(0, pointsClicked - 2) + m_linesManager.GetPoint(0, pointsClicked - 1);
@@ -142,12 +134,11 @@ public class ProjectManager : MonoBehaviour
         // 0 is Left mouse button, 1 is Right mouse button
         if(Input.GetMouseButtonDown(1))
         {
-            RaycastHit rh;
-            if (Physics.Raycast(Camera.main.ScreenPointToRay(Input.mousePosition), out rh))
+            if (Physics.Raycast(Camera.main.ScreenPointToRay(Input.mousePosition), out RaycastHit rh))
             {
                 // find the index
                 int index = 0;
-                for(int i=0;i< draggablePoints.Count; ++i)
+                for (int i = 0; i < draggablePoints.Count; ++i)
                 {
                     if (draggablePoints[i] == rh.collider.gameObject)
                     {
@@ -159,6 +150,7 @@ public class ProjectManager : MonoBehaviour
                 m_linesManager.RemovePointFromLine(0, index);
                 Destroy(rh.collider.gameObject);
                 pointsClicked--;
+                UpdateCurve();
             }
         }
         if (Input.GetMouseButtonDown(0))
@@ -169,8 +161,7 @@ public class ProjectManager : MonoBehaviour
             }
             else
             {
-                RaycastHit rh;
-                if (Physics.Raycast(Camera.main.ScreenPointToRay(Input.mousePosition), out rh))
+                if (Physics.Raycast(Camera.main.ScreenPointToRay(Input.mousePosition), out RaycastHit rh))
                 {
                     // clicked on a point
                     dragging = true;
@@ -210,14 +201,29 @@ public class ProjectManager : MonoBehaviour
 
             m_linesManager.SetPoint(0, index, point);
 
-            // update midpoints
-            //for (int i = 0; i < draggablePoints.Count-1; ++i)
-            //{
-            //    m_linesManager.SetPoint(1, i, (m_linesManager.GetPoint(0, i) + m_linesManager.GetPoint(0, i+1)) * 0.5f);
-            //}
+            UpdateCurve();
         }
 
         m_linesManager.SetWidth(0, slider.value);
+    }
+
+    private void UpdateCurve()
+    {
+        if (pointsClicked < 2)
+            return;
+
+        // remove everything and re-generate the curve
+        m_linesManager.ClearLine(1);
+        //m_linesManager.AddPoint(1);
+
+        for (int i = 0; i < draggablePoints.Count - 1; ++i)
+        {
+            m_linesManager.AddPoint(1);
+            var midp = m_linesManager.GetPoint(0, i) + m_linesManager.GetPoint(0, i+1);
+            m_linesManager.SetPoint(1, i, midp * 0.5f);
+
+            //m_linesManager.SetPoint(1, i, (m_linesManager.GetPoint(0, i) + m_linesManager.GetPoint(0, i + 1)) * 0.5f);
+        }
     }
 
     // create buttons/labels with ImGUI in here
@@ -227,7 +233,8 @@ public class ProjectManager : MonoBehaviour
         {
             pointsClicked = 0;
             m_linesManager.ClearLine(0);
-            foreach(var o in draggablePoints)
+            m_linesManager.ClearLine(1);
+            foreach (var o in draggablePoints)
             {
                 Destroy(o);
             }
