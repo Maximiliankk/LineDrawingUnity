@@ -6,8 +6,9 @@ using System;
 
 public class ProjectManager : MonoBehaviour
 {
-    readonly float lineWidth = 0.1f;
+    readonly float lineWidth = 0.5f;
     readonly float pointWidth = 0.5f;
+    readonly int curveLines = 20;
 
     // manages all line strips
     public class LinesManager
@@ -15,7 +16,7 @@ public class ProjectManager : MonoBehaviour
         // data for one line strip
         public class LineData
         {
-            public LineData(LineRenderer r, GameObject o)
+            public LineData(LineRenderer r, GameObject o, float width)
             {
                 rend = r;
                 obj = o;
@@ -27,16 +28,15 @@ public class ProjectManager : MonoBehaviour
             public GameObject obj;
             public Color col = Color.green;
             public List<Vector3> pts = new List<Vector3>();
-            public float width = 0.1f;
         }
 
         // main data of LinesManager
         List<LineData> allRends = new List<LineData>();
 
         // public interface for LinesManager
-        public void AddLine(Color c, LineRenderer rend, GameObject go)
+        public void AddLine(Color c, LineRenderer rend, GameObject go, float width)
         {
-            allRends.Add(new LineData(rend, go));
+            allRends.Add(new LineData(rend, go, width));
             var r = allRends[allRends.Count - 1];
             r.col = c;
             r.rend.positionCount = 0;
@@ -97,11 +97,17 @@ public class ProjectManager : MonoBehaviour
     // Start is called before the first frame update
     void Start()
     {
+        // create the blue line
         var go = Instantiate(lineRendPrefab);
-        m_linesManager.AddLine(Color.blue, go.GetComponent<LineRenderer>(), go);
-        var go2 = Instantiate(lineRendPrefab);
-        m_linesManager.AddLine(Color.yellow, go2.GetComponent<LineRenderer>(), go2);
-        slider.value = lineWidth; // reasonable starting value
+        m_linesManager.AddLine(Color.blue, go.GetComponent<LineRenderer>(), go, lineWidth);
+
+        // create the curve lines
+        for (int i = 0; i < curveLines; ++i)
+        {
+            var go2 = Instantiate(lineRendPrefab);
+            m_linesManager.AddLine(Color.yellow, go2.GetComponent<LineRenderer>(), go2, lineWidth);
+        }
+        slider.value = lineWidth;
     }
 
     void ClickPoint(Vector3 point)
@@ -117,15 +123,7 @@ public class ProjectManager : MonoBehaviour
 
         // update the lineRenderer vertex position
         m_linesManager.SetPoint(0, pointsClicked - 1, point);
-
-        if (pointsClicked > 1)
-            UpdateCurve();
-        //if(pointsClicked > 1)
-        //{
-        //    var midp = m_linesManager.GetPoint(0, pointsClicked - 2) + m_linesManager.GetPoint(0, pointsClicked - 1);
-        //    m_linesManager.AddPoint(1);
-        //    m_linesManager.SetPoint(1, pointsClicked - 2, midp * 0.5f);
-        //}
+        UpdateCurve();
     }
 
     // Update is called once per frame
@@ -204,7 +202,13 @@ public class ProjectManager : MonoBehaviour
             UpdateCurve();
         }
 
-        m_linesManager.SetWidth(0, slider.value);
+        // update line widths with the UI slider
+        m_linesManager.SetWidth(0, slider.value * 0.1f);
+
+        for (int j = 0; j < curveLines; j++)
+        {
+            m_linesManager.SetWidth(1+j, slider.value * 0.1f);
+        }
     }
 
     private void UpdateCurve()
@@ -212,17 +216,20 @@ public class ProjectManager : MonoBehaviour
         if (pointsClicked < 2)
             return;
 
-        // remove everything and re-generate the curve
-        m_linesManager.ClearLine(1);
-        //m_linesManager.AddPoint(1);
-
-        for (int i = 0; i < draggablePoints.Count - 1; ++i)
+        for (int j = 0; j < curveLines; j++)
         {
-            m_linesManager.AddPoint(1);
-            var midp = m_linesManager.GetPoint(0, i) + m_linesManager.GetPoint(0, i+1);
-            m_linesManager.SetPoint(1, i, midp * 0.5f);
+            // remove everything and re-generate the curve
+            m_linesManager.ClearLine(1+j);
 
-            //m_linesManager.SetPoint(1, i, (m_linesManager.GetPoint(0, i) + m_linesManager.GetPoint(0, i + 1)) * 0.5f);
+            for (int i = 0; i < draggablePoints.Count - 1; ++i)
+            {
+                m_linesManager.AddPoint(1+j);
+                var p1 = m_linesManager.GetPoint(0, i);
+                var p2 = m_linesManager.GetPoint(0, i+1);
+
+                var toNext = p2 - p1;
+                m_linesManager.SetPoint(1+j, i, p1 + toNext * (j * (1.0f / (float)curveLines)));
+            }
         }
     }
 
