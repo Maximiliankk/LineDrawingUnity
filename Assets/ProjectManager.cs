@@ -8,7 +8,11 @@ public class ProjectManager : MonoBehaviour
 {
     readonly float lineWidth = 0.5f;
     readonly float pointWidth = 0.5f;
-    readonly int curveLines = 20;
+    readonly int example1numlines = 20;
+    readonly int example2numlines = 1;
+
+    private bool example1 = true;
+    private bool example2 = false;
 
     // manages all line strips
     public class LinesManager
@@ -101,12 +105,20 @@ public class ProjectManager : MonoBehaviour
         var go = Instantiate(lineRendPrefab);
         m_linesManager.AddLine(Color.blue, go.GetComponent<LineRenderer>(), go, lineWidth);
 
-        // create the curve lines
-        for (int i = 0; i < curveLines; ++i)
+        // create example 1 curve lines
+        for (int i = 0; i < example1numlines; ++i)
         {
             var go2 = Instantiate(lineRendPrefab);
             m_linesManager.AddLine(Color.yellow, go2.GetComponent<LineRenderer>(), go2, lineWidth);
         }
+
+        // create example 2 curve lines
+        for (int i = 0; i < example2numlines; ++i)
+        {
+            var go2 = Instantiate(lineRendPrefab);
+            m_linesManager.AddLine(Color.red, go2.GetComponent<LineRenderer>(), go2, lineWidth);
+        }
+
         slider.value = lineWidth;
     }
 
@@ -205,10 +217,10 @@ public class ProjectManager : MonoBehaviour
         // update line widths with the UI slider
         m_linesManager.SetWidth(0, slider.value * 0.1f);
 
-        for (int j = 0; j < curveLines; j++)
-        {
-            m_linesManager.SetWidth(1+j, slider.value * 0.1f);
-        }
+        for (int j = 0; j < example1numlines; j++)
+            m_linesManager.SetWidth(1 + j, slider.value * 0.1f);
+        for (int j = 0; j < example2numlines; j++)
+            m_linesManager.SetWidth(1 + example1numlines + j, slider.value * 0.1f);
     }
 
     private void UpdateCurve()
@@ -216,19 +228,41 @@ public class ProjectManager : MonoBehaviour
         if (pointsClicked < 2)
             return;
 
-        for (int j = 0; j < curveLines; j++)
+        for (int j = 0; j < example1numlines; j++)
         {
             // remove everything and re-generate the curve
-            m_linesManager.ClearLine(1+j);
+            m_linesManager.ClearLine(1 + j);
 
-            for (int i = 0; i < draggablePoints.Count - 1; ++i)
+            if (example1)
             {
-                m_linesManager.AddPoint(1+j);
-                var p1 = m_linesManager.GetPoint(0, i);
-                var p2 = m_linesManager.GetPoint(0, i+1);
+                for (int i = 0; i < draggablePoints.Count - 1; ++i)
+                {
+                    m_linesManager.AddPoint(1 + j);
+                    var p1 = m_linesManager.GetPoint(0, i);
+                    var p2 = m_linesManager.GetPoint(0, i + 1);
 
-                var toNext = p2 - p1;
-                m_linesManager.SetPoint(1+j, i, p1 + toNext * (j * (1.0f / (float)curveLines)));
+                    var toNext = p2 - p1;
+                    m_linesManager.SetPoint(1 + j, i, p1 + toNext * (j * (1.0f / (float)example1numlines)));
+                }
+            }
+        }
+
+        for (int j = 0; j < example2numlines; j++)
+        {
+            // remove everything and re-generate the curve
+            m_linesManager.ClearLine(1 + example1numlines + j);
+
+            if (example2)
+            {
+                for (int i = 0; i < draggablePoints.Count - 1; ++i)
+                {
+                    m_linesManager.AddPoint(1 + example1numlines + j);
+                    var p1 = m_linesManager.GetPoint(0, i);
+                    var p2 = m_linesManager.GetPoint(0, i + 1);
+
+                    var midp = (p1 + p2) * 0.5f;
+                    m_linesManager.SetPoint(1 + example1numlines + j, i, midp);
+                }
             }
         }
     }
@@ -240,12 +274,26 @@ public class ProjectManager : MonoBehaviour
         {
             pointsClicked = 0;
             m_linesManager.ClearLine(0);
-            m_linesManager.ClearLine(1);
+
+            for (int j = 0; j < example1numlines; j++)
+                m_linesManager.ClearLine(1 + j);
+            for (int j = 0; j < example2numlines; j++)
+                m_linesManager.ClearLine(1 + example1numlines + j);
             foreach (var o in draggablePoints)
             {
                 Destroy(o);
             }
             draggablePoints.Clear();
+        }
+        if (GUI.Button(new Rect(10, 170, 200, 50), "<color='yellow'><size=30>Example 1</size></color>"))
+        {
+            example1 = !example1;
+            UpdateCurve();
+        }
+        if (GUI.Button(new Rect(10, 230, 200, 50), "<color='red'><size=30>Example 2</size></color>"))
+        {
+            example2 = !example2;
+            UpdateCurve();
         }
     }
 }
