@@ -9,7 +9,7 @@ public class ProjectManager : MonoBehaviour
     static float lineWidth = 0.5f;
     readonly float pointWidth = 0.5f;
     readonly int example1numlines = 20;
-    readonly int example2numlines = 1;
+    readonly int example2numlines = 20;
 
     // manages all line strips
     public class LinesManager
@@ -31,7 +31,7 @@ public class ProjectManager : MonoBehaviour
         }
 
         // main data of LinesManager
-        List<LineData> allRends = new List<LineData>();
+        public List<LineData> allRends = new List<LineData>();
 
         // public interface for LinesManager
         public void AddLine(Color c, LineRenderer rend, GameObject go, float width)
@@ -53,6 +53,10 @@ public class ProjectManager : MonoBehaviour
         public Vector3 GetPoint(int lineIndex, int pointIndex)
         {
             return allRends[lineIndex].rend.GetPosition(pointIndex);
+        }
+        public LineData GetRend(int lineIndex)
+        {
+            return allRends[lineIndex];
         }
         public void RemovePointFromLine(int lineIndex, int pointIndex)
         {
@@ -121,7 +125,6 @@ public class ProjectManager : MonoBehaviour
     }
     static LinesManager m_linesManager = new LinesManager();
 
-
     // current number of active control points
     int pointsClicked = 0;
 
@@ -129,7 +132,7 @@ public class ProjectManager : MonoBehaviour
     [SerializeField] GameObject lineRendPrefab;
 
     // public allows you to drag an object reference here in the editor
-    [SerializeField] UnityEngine.UI.Slider slider;
+    [SerializeField] UnityEngine.UI.Slider slider, slider2;
 
     // flag for dragging points
     bool dragging = false;
@@ -161,7 +164,6 @@ public class ProjectManager : MonoBehaviour
 
         // update the lineRenderer vertex position
         m_linesManager.SetPoint(0, pointsClicked - 1, point);
-        UpdateCurve();
     }
 
     // Update is called once per frame
@@ -186,7 +188,6 @@ public class ProjectManager : MonoBehaviour
                 m_linesManager.RemovePointFromLine(0, index);
                 Destroy(rh.collider.gameObject);
                 pointsClicked--;
-                UpdateCurve();
             }
         }
         if (Input.GetMouseButtonDown(0))
@@ -237,13 +238,14 @@ public class ProjectManager : MonoBehaviour
 
             m_linesManager.SetPoint(0, index, point);
 
-            UpdateCurve();
         }
 
         foreach(var g in m_linesManager.groups)
         {
             g.SetWidths(slider.value * 0.1f);
         }
+
+        UpdateCurve();
     }
 
     private void UpdateCurve()
@@ -252,38 +254,82 @@ public class ProjectManager : MonoBehaviour
             return;
 
         // each example
-        for(int i=1; i< m_linesManager.groups.Count;++i)
+        for (int i = 1; i < m_linesManager.groups.Count; ++i)
         {
             var curGroup = m_linesManager.groups[i];
 
             // remove everything and re-generate the curve
             curGroup.Clear();
+            int curNumLines = (int)(curGroup.numLines * slider2.value);
 
-            // each line list in this example
-            for (int j = 0; j < curGroup.numLines; j++)
+            if (curGroup.visible)
             {
-                if(curGroup.visible)
+                if(i == 1) // example 1
                 {
-                    // for 1-less than the control points
-                    for (int k = 0; k < draggablePoints.Count - 1; ++k)
+                    // each line list in this example
+                    for (int j = 0; j < curNumLines; j++)
                     {
-                        m_linesManager.AddPoint(curGroup.index + j);
-                        Vector3 pos = new Vector3();
-                        Vector3 p1 = m_linesManager.GetPoint(0, k);
-                        Vector3 p2 = m_linesManager.GetPoint(0, k + 1);
-
-                        switch (i)
+                        // for 1-less than the control points
+                        for (int k = 0; k < draggablePoints.Count - 1; ++k)
                         {
-                            case 1:
-                                var toNext = p2 - p1;
-                                pos = p1 + toNext * (j * (1.0f / (float)curGroup.numLines));
-                                break;
-                            case 2:
-                                var midp = (p1 + p2) * 0.5f;
-                                pos = midp;
-                                break;
+                            m_linesManager.AddPoint(curGroup.index + j);
+                            Vector3 pos = new Vector3();
+                            Vector3 p1 = m_linesManager.GetPoint(0, k);
+                            Vector3 p2 = m_linesManager.GetPoint(0, k + 1);
+
+                            var toNext = p2 - p1;
+                            pos = p1 + toNext * (j * (1.0f / (float)curGroup.numLines));
+
+                            m_linesManager.SetPoint(curGroup.index + j, k, pos);
                         }
-                        m_linesManager.SetPoint(curGroup.index + j, k, pos);
+                    }
+                }
+                else if(i == 2) // example 2
+                {
+                    // for each list of lines
+                    for (int j = 0; j < curNumLines; j++)
+                    {
+                        // always copy over first point
+                        m_linesManager.AddPoint(curGroup.index + j);
+                        m_linesManager.SetPoint(curGroup.index + j, m_linesManager.GetRend(curGroup.index + j).rend.positionCount - 1,
+                        draggablePoints[0].transform.position);
+
+                        if (j==0)
+                        {
+                            // for each of the previous row of points
+                            for (int k = 0; k < draggablePoints.Count - 1; ++k)
+                            {
+                                m_linesManager.AddPoint(curGroup.index + j);
+                                Vector3 p1 = m_linesManager.GetPoint(0, k);
+                                Vector3 p2 = m_linesManager.GetPoint(0, k + 1);
+
+                                // get the midpoint and add it
+                                var midp = (p1 + p2) * 0.5f;
+
+                                m_linesManager.SetPoint(curGroup.index + j, m_linesManager.GetRend(curGroup.index + j).rend.positionCount - 1, midp);
+                            }
+                        }
+                        else
+                        {
+                            var prevLine = m_linesManager.allRends[curGroup.index + j - 1].rend;
+
+                            // for each of the previous row of points
+                            for (int k = 0; k < prevLine.positionCount-1; ++k)
+                            {
+                                m_linesManager.AddPoint(curGroup.index + j);
+                                Vector3 p1 = m_linesManager.GetPoint(curGroup.index + j-1, k);
+                                Vector3 p2 = m_linesManager.GetPoint(curGroup.index + j-1, k + 1);
+
+                                // get the midpoint and add it
+                                var midp = (p1 + p2) * 0.5f;
+
+                                m_linesManager.SetPoint(curGroup.index + j, m_linesManager.GetRend(curGroup.index + j).rend.positionCount - 1, midp);
+                            }
+                        }
+                        // always copy over last point too
+                        m_linesManager.AddPoint(curGroup.index + j);
+                        m_linesManager.SetPoint(curGroup.index + j, m_linesManager.GetRend(curGroup.index + j).rend.positionCount - 1,
+                        m_linesManager.GetPoint(0, draggablePoints.Count - 1));
                     }
                 }
             }
@@ -308,7 +354,7 @@ public class ProjectManager : MonoBehaviour
             draggablePoints.Clear();
         }
 
-        for (int i = 1; i < m_linesManager.groups.Count; ++i)
+        for (int i = 0; i < m_linesManager.groups.Count; ++i)
         {
             var g = m_linesManager.groups[i];
             string color = ColorUtility.ToHtmlStringRGBA(m_linesManager.groups[i].col);
@@ -317,8 +363,10 @@ public class ProjectManager : MonoBehaviour
 
             if (GUI.Button(new Rect(10, 170 + 60 * i, 200, 50), label))
             {
-                g.visible = !g.visible;
-                UpdateCurve();
+                if(i==0)
+                    m_linesManager.GetRend(0).rend.gameObject.SetActive(!m_linesManager.GetRend(0).rend.gameObject.activeSelf);
+                else
+                    g.visible = !g.visible;
             }
         }
     }
