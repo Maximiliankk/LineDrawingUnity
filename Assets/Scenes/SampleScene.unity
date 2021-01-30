@@ -371,7 +371,7 @@ MonoBehaviour:
   m_MinValue: 0
   m_MaxValue: 1
   m_WholeNumbers: 0
-  m_Value: 0
+  m_Value: 1
   m_OnValueChanged:
     m_PersistentCalls:
       m_Calls: []
@@ -1208,6 +1208,7 @@ MonoBehaviour:
   lineRendPrefab: {fileID: 3288140930554187374, guid: 47b81ba374ca545ebb55c9119cabfad5,
     type: 3}
   slider: {fileID: 161570778}
+  slider2: {fileID: 216776676}
 --- !u!4 &1492252414
 Transform:
   m_ObjectHideFlags: 0
