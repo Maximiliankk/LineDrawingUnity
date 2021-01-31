@@ -387,5 +387,8 @@ public class ProjectManager : MonoBehaviour
                     g.visible = !g.visible;
             }
         }
+
+        GUI.Label(new Rect(10, 510, 200, 50), "<color=#00FF00><size=20>LMB - Create point</size></color>");
+        GUI.Label(new Rect(10, 610, 200, 50), "<color=#00FF00><size=20>RMB - Delete point</size></color>");
     }
 }
