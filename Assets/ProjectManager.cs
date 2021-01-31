@@ -144,11 +144,106 @@ public class ProjectManager : MonoBehaviour
     // Start is called before the first frame update
     void Start()
     {
-        m_linesManager.AddLineGroup(Color.blue, 1, lineRendPrefab);
+        m_linesManager.AddLineGroup(Color.cyan, 1, lineRendPrefab);
         m_linesManager.AddLineGroup(Color.yellow, example1numlines, lineRendPrefab, true);
-        m_linesManager.AddLineGroup(Color.red, example2numlines, lineRendPrefab);
+        m_linesManager.AddLineGroup(Color.red, example2numlines, lineRendPrefab, true);
 
         slider.value = lineWidth;
+    }
+
+    // Update is called once per frame
+    void Update()
+    {
+        // 0 is Left mouse button, 1 is Right mouse button
+        if(Input.GetMouseButtonDown(1))
+        {
+            HandleRightMouseButtonClick();
+        }
+        if (Input.GetMouseButtonDown(0))
+        {
+            HandleLeftMouseButtonClick();
+        }
+        if (Input.GetMouseButtonUp(0))
+        {
+            dragging = false;
+            draggedObj = null;
+        }
+
+        if(dragging)
+        {
+            HandleMouseDrag();
+        }
+        // update line widths
+        foreach(var g in m_linesManager.groups)
+        {
+            g.SetWidths(slider.value * 0.1f);
+        }
+        // update curves
+        UpdateCurves();
+    }
+    void HandleMouseDrag()
+    {
+        // update the dragged object's position
+        var point = Camera.main.ScreenToWorldPoint(
+        new Vector3(Input.mousePosition.x, Input.mousePosition.y, Mathf.Abs(Camera.main.transform.position.z)));
+        draggedObj.transform.position = point;
+
+        // find the index of the dragged object so we can update the line renderer's point position
+        int index = 0;
+        for (int i = 0; i < draggablePoints.Count; ++i)
+        {
+            if (draggablePoints[i] == draggedObj)
+            {
+                index = i;
+                break;
+            }
+        }
+        // update the position
+        m_linesManager.SetPoint(0, index, point);
+    }
+    void HandleLeftMouseButtonClick()
+    {
+        if (EventSystem.current.IsPointerOverGameObject())
+        {
+            Debug.Log("left-clicked on UI");
+        }
+        else
+        {
+            if (Physics.Raycast(Camera.main.ScreenPointToRay(Input.mousePosition), out RaycastHit rh))
+            {
+                // clicked on a point
+                dragging = true;
+                draggedObj = rh.collider.gameObject;
+            }
+            else
+            {
+                // convert mouse coords to a world position
+                var point = Camera.main.ScreenToWorldPoint(
+                new Vector3(Input.mousePosition.x, Input.mousePosition.y, Mathf.Abs(Camera.main.transform.position.z)));
+
+                ClickPoint(point);
+            }
+        }
+    }
+    void HandleRightMouseButtonClick()
+    {
+        if (Physics.Raycast(Camera.main.ScreenPointToRay(Input.mousePosition), out RaycastHit rh))
+        {
+            // find the index
+            int index = 0;
+            for (int i = 0; i < draggablePoints.Count; ++i)
+            {
+                if (draggablePoints[i] == rh.collider.gameObject)
+                {
+                    index = i;
+                    break;
+                }
+            }
+            draggablePoints.RemoveAt(index);
+            m_linesManager.RemovePointFromLine(0, index);
+            Destroy(rh.collider.gameObject);
+            pointsClicked--;
+        }
     }
 
     void ClickPoint(Vector3 point)
@@ -166,89 +261,8 @@ public class ProjectManager : MonoBehaviour
         m_linesManager.SetPoint(0, pointsClicked - 1, point);
     }
 
-    // Update is called once per frame
-    void Update()
-    {
-        // 0 is Left mouse button, 1 is Right mouse button
-        if(Input.GetMouseButtonDown(1))
-        {
-            if (Physics.Raycast(Camera.main.ScreenPointToRay(Input.mousePosition), out RaycastHit rh))
-            {
-                // find the index
-                int index = 0;
-                for (int i = 0; i < draggablePoints.Count; ++i)
-                {
-                    if (draggablePoints[i] == rh.collider.gameObject)
-                    {
-                        index = i;
-                        break;
-                    }
-                }
-                draggablePoints.RemoveAt(index);
-                m_linesManager.RemovePointFromLine(0, index);
-                Destroy(rh.collider.gameObject);
-                pointsClicked--;
-            }
-        }
-        if (Input.GetMouseButtonDown(0))
-        {
-            if (EventSystem.current.IsPointerOverGameObject())
-            {
-                Debug.Log("left-clicked on UI");
-            }
-            else
-            {
-                if (Physics.Raycast(Camera.main.ScreenPointToRay(Input.mousePosition), out RaycastHit rh))
-                {
-                    // clicked on a point
-                    dragging = true;
-                    draggedObj = rh.collider.gameObject;
-                }
-                else
-                {
-                    // convert mouse coords to a world position
-                    var point = Camera.main.ScreenToWorldPoint(
-                    new Vector3(Input.mousePosition.x, Input.mousePosition.y, Mathf.Abs(Camera.main.transform.position.z)));
 
-                    ClickPoint(point);
-                }
-            }
-        }
-        if (Input.GetMouseButtonUp(0))
-        {
-            dragging = false;
-            draggedObj = null;
-        }
-
-        if(dragging)
-        {
-            var point = Camera.main.ScreenToWorldPoint(
-            new Vector3(Input.mousePosition.x, Input.mousePosition.y, Mathf.Abs(Camera.main.transform.position.z)));
-            draggedObj.transform.position = point;
-
-            int index = 0;
-            for (int i = 0; i < draggablePoints.Count; ++i)
-            {
-                if (draggablePoints[i] == draggedObj)
-                {
-                    index = i;
-                    break;
-                }
-            }
-
-            m_linesManager.SetPoint(0, index, point);
-
-        }
-
-        foreach(var g in m_linesManager.groups)
-        {
-            g.SetWidths(slider.value * 0.1f);
-        }
-
-        UpdateCurve();
-    }
-
-    private void UpdateCurve()
+    private void UpdateCurves()
     {
         if (pointsClicked < 2)
             return;
@@ -359,6 +373,10 @@ public class ProjectManager : MonoBehaviour
             var g = m_linesManager.groups[i];
             string color = ColorUtility.ToHtmlStringRGBA(m_linesManager.groups[i].col);
             string onoff = g.visible ? "on" : "off";
+            if (i == 0)
+            {
+                onoff = m_linesManager.GetRend(0).rend.gameObject.activeSelf ? "on" : "off";
+            }
             string label = "<color=#" + color + "><size=30>Example " + i.ToString() + " " + onoff + "</size></color>";
 
             if (GUI.Button(new Rect(10, 170 + 60 * i, 200, 50), label))
