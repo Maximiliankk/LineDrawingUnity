@@ -1186,6 +1186,7 @@ GameObject:
   m_Component:
   - component: {fileID: 1492252414}
   - component: {fileID: 1492252413}
+  - component: {fileID: 1492252415}
   m_Layer: 0
   m_Name: ProjectManager
   m_TagString: Untagged
@@ -1205,6 +1206,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 73a4d44b0330b4dc9812e9f87d1e51dd, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  m_linesManager: {fileID: 1492252415}
   lineRendPrefab: {fileID: 3288140930554187374, guid: 47b81ba374ca545ebb55c9119cabfad5,
     type: 3}
   slider: {fileID: 161570778}
@@ -1223,6 +1225,18 @@ Transform:
   m_Father: {fileID: 0}
   m_RootOrder: 2
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1492252415
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1492252412}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0351d82860bc64d43903f4f79f7148bf, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!1 &1560551522
 GameObject:
   m_ObjectHideFlags: 0

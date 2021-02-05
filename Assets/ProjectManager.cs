@@ -4,6 +4,7 @@ using UnityEngine.EventSystems;
 using UnityEngine;
 using System;
 
+[RequireComponent(typeof(LinesManager))]
 public class ProjectManager : MonoBehaviour
 {
     static float lineWidth = 0.5f;
@@ -11,142 +12,31 @@ public class ProjectManager : MonoBehaviour
     readonly int example1numlines = 20;
     readonly int example2numlines = 20;
 
-    // manages all line strips
-    public class LinesManager
-    {
-        // data for one line strip
-        public class LineData
-        {
-            public LineData(LineRenderer r, GameObject o, float width)
-            {
-                rend = r;
-                obj = o;
-                r.material.color = col;
-                r.startWidth = width;
-                r.endWidth = width;
-            }
-            public LineRenderer rend;
-            public GameObject obj;
-            public Color col = Color.green;
-        }
-
-        // main data of LinesManager
-        public List<LineData> allRends = new List<LineData>();
-
-        // public interface for LinesManager
-        public void AddLine(Color c, LineRenderer rend, GameObject go, float width)
-        {
-            allRends.Add(new LineData(rend, go, width));
-            var r = allRends[allRends.Count - 1];
-            r.col = c;
-            r.rend.positionCount = 0;
-            r.rend.material.color = c;
-        }
-        public void AddPoint(int lineIndex)
-        {
-            allRends[lineIndex].rend.positionCount++;
-        }
-        public void SetPoint(int lineIndex, int pointIndex, Vector3 pos)
-        {
-            allRends[lineIndex].rend.SetPosition(pointIndex, pos);
-        }
-        public Vector3 GetPoint(int lineIndex, int pointIndex)
-        {
-            return allRends[lineIndex].rend.GetPosition(pointIndex);
-        }
-        public LineData GetRend(int lineIndex)
-        {
-            return allRends[lineIndex];
-        }
-        public void RemovePointFromLine(int lineIndex, int pointIndex)
-        {
-            if(pointIndex < allRends[lineIndex].rend.positionCount)
-            {
-                for (int i = pointIndex; i <= allRends[lineIndex].rend.positionCount - 2; i++)
-                {
-                    // shift all other points to fill in the removed
-                    allRends[lineIndex].rend.SetPosition(i, allRends[lineIndex].rend.GetPosition(i + 1));
-                }
-            }
-            allRends[lineIndex].rend.positionCount--;
-        }
-        public void SetWidth(int lineIndex, float width)
-        {
-            allRends[lineIndex].rend.startWidth = width;
-            allRends[lineIndex].rend.endWidth = width;
-        }
-        public void ClearLine(int lineIndex)
-        {
-            allRends[lineIndex].rend.positionCount = 0;
-        }
-
-        public class LineGroup
-        {
-            public int numLines;
-            public int index;
-            public bool visible = false;
-            public Color col;
-
-            public void Initialize(GameObject prefab)
-            {
-                for (int i = 0; i < numLines; ++i)
-                {
-                    var go2 = Instantiate(prefab);
-                    m_linesManager.AddLine(col, go2.GetComponent<LineRenderer>(), go2, lineWidth);
-                }
-            }
-
-            public void SetWidths(float width)
-            {
-                for (int j = 0; j < numLines; j++)
-                    m_linesManager.SetWidth(index + j, width);
-            }
-
-            public void Clear()
-            {
-                for (int j = 0; j < numLines; j++)
-                    m_linesManager.ClearLine(index + j);
-            }
-        }
-        public List<LineGroup> groups = new List<LineGroup>();
-
-        public void AddLineGroup(Color c, int num, GameObject prefab, bool vis = false)
-        {
-            LineGroup lg = new LineGroup();
-            
-            lg.numLines = num;
-            lg.visible = vis;
-            lg.col = c;
-            lg.index = (groups.Count > 0) ?
-                groups[groups.Count-1].index + groups[groups.Count - 1].numLines : 0;
-            lg.Initialize(prefab);
-            groups.Add(lg);
-        }
-    }
-    static LinesManager m_linesManager = new LinesManager();
+    LinesManager m_linesManager;
 
     // current number of active control points
     int pointsClicked = 0;
 
-    // use this as a template to make more lineRenderers
+    // we will use this prefab as a template to make more lineRenderers
     [SerializeField] GameObject lineRendPrefab;
 
-    // public allows you to drag an object reference here in the editor
+    // references to specific UI components
     [SerializeField] UnityEngine.UI.Slider slider, slider2;
 
-    // flag for dragging points
+    // flag for dragging points or not
     bool dragging = false;
     GameObject draggedObj = null;
 
-    // list container for references to all the sphere gameObjects
+    // list container for references to all the draggable sphere objs
     List<GameObject> draggablePoints = new List<GameObject>();
 
     // Start is called before the first frame update
     void Start()
     {
-        m_linesManager.AddLineGroup(Color.cyan, 1, lineRendPrefab);
-        m_linesManager.AddLineGroup(Color.yellow, example1numlines, lineRendPrefab, true);
-        m_linesManager.AddLineGroup(Color.red, example2numlines, lineRendPrefab, true);
+        m_linesManager = GetComponent<LinesManager>(); // we required this component, get reference to it
+        m_linesManager.AddLineGroup(Color.cyan, 1, lineRendPrefab, lineWidth);
+        m_linesManager.AddLineGroup(Color.yellow, example1numlines, lineRendPrefab, lineWidth, true);
+        m_linesManager.AddLineGroup(Color.red, example2numlines, lineRendPrefab, lineWidth, true);
 
         slider.value = lineWidth;
     }
@@ -176,7 +66,7 @@ public class ProjectManager : MonoBehaviour
         // update line widths
         foreach(var g in m_linesManager.groups)
         {
-            g.SetWidths(slider.value * 0.1f);
+            g.SetWidths(slider.value * 0.1f, m_linesManager);
         }
         // update curves
         UpdateCurves();
@@ -273,7 +163,7 @@ public class ProjectManager : MonoBehaviour
             var curGroup = m_linesManager.groups[i];
 
             // remove everything and re-generate the curve
-            curGroup.Clear();
+            curGroup.Clear(m_linesManager);
             int curNumLines = (int)(curGroup.numLines * slider2.value);
 
             if (curGroup.visible)
@@ -359,7 +249,7 @@ public class ProjectManager : MonoBehaviour
 
             foreach (var g in m_linesManager.groups)
             {
-                g.Clear();
+                g.Clear(m_linesManager);
             }
             foreach (var o in draggablePoints)
             {
